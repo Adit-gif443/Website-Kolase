@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Symmetric HD Collage Maker - Aditya Hermansyah</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+      body {
+        background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        background-attachment: fixed;
+        min-height: 100vh;
+      }
+
+      #collage-container {
+        width: 100%;
+        height: 480px;
+        max-width: 500px;
+        margin: 0 auto;
+        background-color: white;
+        border-radius: 24px;
+        padding: 15px;
+        display: grid;
+        gap: 0px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      }
+
+      .grid-1 {
+        grid-template-columns: 1fr;
+      }
+      .grid-2,
+      .grid-3,
+      .grid-4 {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .img-wrapper {
+        height: 450px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: white;
+        overflow: hidden;
+        padding: 5px;
+      }
+
+      @media (max-width: 640px) {
+        .img-wrapper {
+          height: 250px;
+        }
+        h1 {
+          font-size: 1.5rem !important;
+        }
+      }
+
+      .img-wrapper img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border-radius: 12px;
+      }
+
+      /* Tombol Upload Custom dengan Efek Blur & Shadow */
+      .btn-upload-custom {
+        background: rgba(244, 114, 182, 0.05); /* Sangat tipis */
+        color: #f472b6;
+        border: 2px solid rgba(244, 114, 182, 0.3);
+        backdrop-filter: blur(8px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        outline: none !important;
+      }
+
+      .btn-upload-custom:hover {
+        background: rgba(244, 114, 182, 0.15);
+        color: white;
+        border-color: rgba(244, 114, 182, 0.8);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(244, 114, 182, 0.3);
+      }
+
+      .btn-upload-custom:active {
+        transform: scale(0.95);
+        background: rgba(244, 114, 182, 0.25);
+      }
+
+      .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+      }
+
+      /* Sembunyikan Input File Bawaan Secara Total */
+      #fileInput {
+        display: none;
+      }
+    </style>
+  </head>
+  <body class="text-white p-3 p-md-5">
+    <div class="toast-container">
+      <div
+        id="successToast"
+        class="toast align-items-center text-white bg-success border-0"
+        role="alert"
+      >
+        <div class="d-flex">
+          <div class="toast-body">
+            ✅ Download Berhasil! Halaman Akan Di Refresh Otomatis
+          </div>
+          <button
+            type="button"
+            class="btn-close btn-close-white me-2 m-auto"
+            data-bs-dismiss="toast"
+          ></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-fluid max-w-4xl mx-auto flex flex-col items-center">
+      <header class="text-center mb-6">
+        <h1 class="text-3xl md:text-4xl font-bold text-pink-400">
+          Welcome To Kolase Foto By. Aditya Hermansyah
+        </h1>
+        <p class="text-slate-400 mt-2">Kolase Foto Dengan Mudah Dan Simple.</p>
+      </header>
+
+      <div
+        id="instruction-box"
+        class="border-2 border-dashed border-pink-500/30 w-full max-w-2xl p-6 rounded-3xl text-center mb-8 bg-slate-800/40 backdrop-blur-md"
+      >
+        <p class="text-lg mb-4">
+          Cara 1: Copy Gambar & Tekan
+          <kbd class="bg-primary px-2 py-1 rounded">Ctrl + V</kbd>
+        </p>
+
+        <div class="flex items-center justify-center gap-3 mb-4">
+          <div class="h-[1px] w-12 bg-slate-700"></div>
+          <span class="text-slate-500 text-xs font-bold tracking-widest"
+            >ATAU</span
+          >
+          <div class="h-[1px] w-12 bg-slate-700"></div>
+        </div>
+
+        <input
+          type="file"
+          id="fileInput"
+          accept="image/*"
+          multiple
+          onchange="handleFileUpload(event)"
+        />
+
+        <button
+          onclick="document.getElementById('fileInput').click()"
+          class="btn btn-upload-custom rounded-pill px-5 py-3 fw-bold"
+        >
+          📁 Cara 2: Pilih Foto Manual
+        </button>
+
+        <p class="text-sm text-slate-500 mt-4 font-medium">
+          Foto terpilih:
+          <span id="photo-counter" class="text-pink-400 font-bold">0</span
+          ><span class="font-bold">/4</span>
+        </p>
+      </div>
+
+      <div id="collage-container" class="hidden"></div>
+
+      <div
+        id="action-buttons"
+        class="mt-8 flex flex-wrap justify-center gap-3 hidden w-full"
+      >
+        <button
+          onclick="downloadCollage('png')"
+          class="btn btn-primary rounded-pill px-5 py-3 fw-bold shadow-lg transition-all hover:brightness-110"
+        >
+          Download PNG
+        </button>
+        <button
+          onclick="downloadCollage('jpeg')"
+          class="btn btn-danger rounded-pill px-5 py-3 fw-bold shadow-lg transition-all hover:brightness-110"
+        >
+          Download JPG
+        </button>
+      </div>
+
+      <div
+        id="loading-text"
+        class="mt-6 text-pink-300 font-bold hidden animate-pulse"
+      >
+        Menyiapkan Resolusi Tinggi...
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      let photoData = [];
+
+      // Logika Paste
+      window.addEventListener("paste", function (e) {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let index in items) {
+          const item = items[index];
+          if (item.kind === "file" && item.type.includes("image")) {
+            processFile(item.getAsFile());
+          }
+        }
+      });
+
+      // Logika Upload Manual
+      function handleFileUpload(event) {
+        const files = event.target.files;
+        for (let i = 0; i < files.length; i++) {
+          processFile(files[i]);
+        }
+        event.target.value = ""; // Reset agar bisa pilih file yang sama
+      }
+
+      function processFile(file) {
+        if (photoData.length < 4) {
+          const reader = new FileReader();
+          reader.onload = function (event) {
+            photoData.push(event.target.result);
+            updateCollage();
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+
+      function updateCollage() {
+        const container = document.getElementById("collage-container");
+        const actionButtons = document.getElementById("action-buttons");
+        const counter = document.getElementById("photo-counter");
+
+        if (photoData.length > 0) {
+          container.classList.remove("hidden");
+          actionButtons.classList.remove("hidden");
+          container.innerHTML = "";
+          container.className = photoData.length === 1 ? "grid-1" : "grid-2";
+
+          photoData.forEach((src) => {
+            const div = document.createElement("div");
+            div.className = "img-wrapper";
+            div.innerHTML = `<img src="${src}">`;
+            container.appendChild(div);
+          });
+        }
+        counter.innerText = photoData.length;
+      }
+
+      async function downloadCollage(format) {
+        const element = document.getElementById("collage-container");
+        const loading = document.getElementById("loading-text");
+        loading.classList.remove("hidden");
+
+        try {
+          const canvas = await html2canvas(element, {
+            scale: 3,
+            useCORS: true,
+            backgroundColor: "#ffffff",
+          });
+          const extension = format === "jpeg" ? "jpg" : "png";
+          const mimeType = `image/${format}`;
+          const fileName = `Aditya-Collage-${Date.now()}.${extension}`;
+
+          if ("showSaveFilePicker" in window) {
+            const handle = await window.showSaveFilePicker({
+              suggestedName: fileName,
+              types: [
+                {
+                  description: `Image File`,
+                  accept: { [mimeType]: [`.${extension}`] },
+                },
+              ],
+            });
+            const writable = await handle.createWritable();
+            canvas.toBlob(
+              async (blob) => {
+                await writable.write(blob);
+                await writable.close();
+                showSuccessAlert();
+              },
+              mimeType,
+              1.0
+            );
+          } else {
+            const link = document.createElement("a");
+            link.download = fileName;
+            link.href = canvas.toDataURL(mimeType, 1.0);
+            link.click();
+            showSuccessAlert();
+          }
+        } catch (err) {
+          loading.classList.add("hidden");
+        }
+      }
+
+      function showSuccessAlert() {
+        const toastElement = document.getElementById("successToast");
+        const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+        toast.show();
+        document.getElementById("loading-text").classList.add("hidden");
+        setTimeout(() => {
+          window.location.reload();
+        }, 3500);
+      }
+    </script>
+  </body>
+</html>
